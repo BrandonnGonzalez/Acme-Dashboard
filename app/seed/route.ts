@@ -2,21 +2,9 @@ import bcrypt from 'bcrypt';
 import postgres from 'postgres';
 import { invoices, customers, revenue, users } from '../lib/placeholder-data';
 
-// Lazy initialization of database connection to avoid build-time errors
-let sql: ReturnType<typeof postgres> | null = null;
+const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 
-function getSql() {
-  if (!sql) {
-    const postgresUrl = process.env.POSTGRES_URL;
-    if (!postgresUrl) {
-      throw new Error('POSTGRES_URL environment variable is not set');
-    }
-    sql = postgres(postgresUrl, { ssl: 'require' });
-  }
-  return sql;
-}
-
-async function seedUsers(sql: ReturnType<typeof postgres>) {
+async function seedUsers() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
   await sql`
     CREATE TABLE IF NOT EXISTS users (
@@ -41,7 +29,7 @@ async function seedUsers(sql: ReturnType<typeof postgres>) {
   return insertedUsers;
 }
 
-async function seedInvoices(sql: ReturnType<typeof postgres>) {
+async function seedInvoices() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
 
   await sql`
@@ -67,7 +55,7 @@ async function seedInvoices(sql: ReturnType<typeof postgres>) {
   return insertedInvoices;
 }
 
-async function seedCustomers(sql: ReturnType<typeof postgres>) {
+async function seedCustomers() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
 
   await sql`
@@ -92,7 +80,7 @@ async function seedCustomers(sql: ReturnType<typeof postgres>) {
   return insertedCustomers;
 }
 
-async function seedRevenue(sql: ReturnType<typeof postgres>) {
+async function seedRevenue() {
   await sql`
     CREATE TABLE IF NOT EXISTS revenue (
       month VARCHAR(4) NOT NULL UNIQUE,
@@ -115,11 +103,11 @@ async function seedRevenue(sql: ReturnType<typeof postgres>) {
 
 export async function GET() {
   try {
-    const result = await getSql().begin((sql) => [
-      seedUsers(sql),
-      seedCustomers(sql),
-      seedInvoices(sql),
-      seedRevenue(sql),
+    const result = await sql.begin((sql) => [
+      seedUsers(),
+      seedCustomers(),
+      seedInvoices(),
+      seedRevenue(),
     ]);
 
     return Response.json({ message: 'Database seeded successfully' });
